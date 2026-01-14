@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  fullName  String
+  clerkId   String   @unique
+  type      String
+  stripeId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domains       Domain[]
+  campaigns     Campaign[]
+  subscriptions Billings?
+}
+
+model Campaign {
+  id        String     @id @default(uuid())
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  template  String?
+  customers Customer[]
+  user      User?      @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+model Domain {
+  id   String @id @default(uuid())
+  name String
+  icon String
+
+  chatBot         ChatBot?
+  helpDesk        HelpDesk[]
+  filterQuestions FilterQuestions[]
+  customer        Customer[]
+
+  user     User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String?
+  bookings Bookings[]
+}
+
+model ChatBot {
+  id             String  @id @default(uuid())
+  welcomeMessage String?
+  icon           String?
+  textColor      String?
+  background     String?
+  helpdesk       Boolean @default(false)
+  domain         Domain? @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId       String? @unique
+}
+
+model Billings {
+  id      String @id @default(uuid())
+  plan    Plans  @default(STANDARD)
+  credits Int    @default(10)
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+}
+
+model HelpDesk {
+  id       String @id @default(uuid())
+  question String
+  answer   String
+
+  domain   Domain? @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId String?
+}
+
+model FilterQuestions {
+  id       String  @id @default(uuid())
+  question String
+  answered String?
+
+  domain   Domain? @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId String?
+}
+
+model CustomerResponse {
+  id       String  @id @default(uuid())
+  question String
+  answered String?
+
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String?
+}
+
+model Customer {
+  id        String             @id @default(uuid())
+  email     String?
+  questions CustomerResponse[]
+  chatRoom  ChatRoom[]
+
+  domain     Domain?    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId   String?
+  bookings   Bookings[]
+  campaign   Campaign?  @relation(fields: [campaignId], references: [id])
+  campaignId String?
+}
+
+model Bookings {
+  id String @id @default(uuid())
+
+  email String
+  slot  String
+  date  DateTime
+
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String?
+
+  domain   Domain? @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatRoom {
+  id     String  @id @default(uuid())
+  live   Boolean @default(false)
+  mailed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  message ChatMessage[]
+
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String?
+}
+
+model ChatMessage {
+  id         String    @id @default(uuid())
+  message    String
+  role       Role?
+  seen       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoomId String?
+}
+
+enum Plans {
+  STANDARD
+  PRO
+  ULTIMATE
+}
+
+enum Role {
+  OWNER
+  CUSTOMER
+  assistant
+  user
+}
